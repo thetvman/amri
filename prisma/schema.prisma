@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         String   @default("user")
+  inviteUsed   Invite?  @relation("InviteUsed")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Invite {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  createdBy String
+  usedById  String?  @unique
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  usedBy User? @relation("InviteUsed", fields: [usedById], references: [id])
+}
