@@ -40,11 +40,13 @@ export function UserActions() {
           Sign out
         </Button>
       )}
-      <Link href="/profile" className="flex items-center">
-        <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-sm font-semibold text-primary">
-          {session?.user?.name?.slice(0, 2).toUpperCase() || "AM"}
-        </div>
-      </Link>
+      {session?.user && (
+        <Link href="/profile" className="flex items-center">
+          <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-sm font-semibold text-primary">
+            {session.user.name?.slice(0, 2).toUpperCase() || "AM"}
+          </div>
+        </Link>
+      )}
     </div>
   )
 }

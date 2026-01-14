@@ -1,8 +1,9 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Star, Play } from "lucide-react"
+import { Star, Play, Lock } from "lucide-react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 
 interface MovieCardProps {
   movie: {
@@ -23,6 +24,10 @@ const cardVariants = {
 }
 
 export function MovieCard({ movie, index }: MovieCardProps) {
+  const { status } = useSession()
+  const isAuthed = status === "authenticated"
+  const href = isAuthed ? `/watch/${movie.id}?type=${movie.type}` : "/login"
+
   return (
     <motion.div
       variants={cardVariants}
@@ -31,7 +36,7 @@ export function MovieCard({ movie, index }: MovieCardProps) {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.98 }}
     >
-      <Link href={`/watch/${movie.id}?type=${movie.type}`}>
+      <Link href={href}>
         <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-card/40 backdrop-blur-lg border border-border/40 shadow-lg">
           <img
             src={movie.poster || "/placeholder.svg"}
@@ -43,7 +48,11 @@ export function MovieCard({ movie, index }: MovieCardProps) {
           {/* Play button overlay */}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <div className="w-16 h-16 rounded-full bg-primary/90 backdrop-blur-lg flex items-center justify-center border-2 border-primary">
-              <Play className="h-8 w-8 text-primary-foreground ml-1" fill="currentColor" />
+              {isAuthed ? (
+                <Play className="h-8 w-8 text-primary-foreground ml-1" fill="currentColor" />
+              ) : (
+                <Lock className="h-7 w-7 text-primary-foreground" />
+              )}
             </div>
           </div>
 
@@ -60,7 +69,10 @@ export function MovieCard({ movie, index }: MovieCardProps) {
 
       <div className="mt-3">
         <h3 className="font-semibold truncate text-foreground">{movie.title}</h3>
-        <p className="text-sm text-muted-foreground">{movie.genre}</p>
+        <p className="text-sm text-muted-foreground">
+          {movie.genre}
+          {!isAuthed && " • Sign in to watch"}
+        </p>
       </div>
     </motion.div>
   )
