@@ -7,6 +7,10 @@ cd "$PROJECT_PATH"
 echo "Pulling latest changes..."
 git pull --rebase
 
+if [ ! -f ".env" ] && [ -f ".env.local" ]; then
+  cp .env.local .env
+fi
+
 echo "Installing dependencies..."
 npm install
 

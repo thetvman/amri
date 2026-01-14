@@ -50,6 +50,32 @@ chmod +x scripts/update-server.sh
 ./scripts/update-server.sh
 ```
 
+## 🚀 GitHub Actions Auto-Deploy (Option C)
+
+### 1) Prepare the server (one-time)
+```bash
+git clone https://github.com/thetvman/amri.git
+cd amri
+chmod +x scripts/setup-server.sh
+./scripts/setup-server.sh
+```
+
+### 2) Add GitHub Secrets
+In your GitHub repo → **Settings → Secrets and variables → Actions**, add:
+- `SERVER_HOST` (e.g. 123.45.67.89)
+- `SERVER_USER` (e.g. ubuntu)
+- `SERVER_SSH_KEY` (private key for SSH)
+- `SERVER_PATH` (e.g. /home/ubuntu/amri)
+- `SERVER_PORT` (optional, default 22)
+
+### 3) Auto-deploy on push
+Every push to `main` runs `.github/workflows/deploy.yml`, which:
+- SSHs into your server
+- Runs `scripts/update-server.sh`
+- Rebuilds the app
+
+If you want a systemd service (auto restart), I can add that next.
+
 ## 🔐 Authentication Setup
 
 Create an `.env.local` file in `amriM` with:

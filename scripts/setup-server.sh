@@ -15,14 +15,21 @@ if [ ! -f ".env.local" ]; then
   read -rp "NEXTAUTH_SECRET: " NEXTAUTH_SECRET
   read -rp "ADMIN_EMAIL: " ADMIN_EMAIL
   read -rp "ADMIN_PASSWORD: " ADMIN_PASSWORD
+  read -rp "DATABASE_URL (default: file:./dev.db): " DATABASE_URL_INPUT
+
+  DATABASE_URL_VALUE="${DATABASE_URL_INPUT:-file:./dev.db}"
 
   cat <<EOF > .env.local
 TMDB_API_KEY=$TMDB_API_KEY
 NEXTAUTH_SECRET=$NEXTAUTH_SECRET
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="$DATABASE_URL_VALUE"
 ADMIN_EMAIL=$ADMIN_EMAIL
 ADMIN_PASSWORD=$ADMIN_PASSWORD
 EOF
+fi
+
+if [ ! -f ".env" ] && [ -f ".env.local" ]; then
+  cp .env.local .env
 fi
 
 echo "Installing dependencies..."
