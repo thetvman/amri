@@ -21,12 +21,20 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url)
-  const filePath = searchParams.get("path")
+  let filePath = searchParams.get("path")
   if (!filePath) {
     return new NextResponse("Missing path", { status: 400 })
   }
 
   const settings = await getSettings()
+  
+  // Map container paths to host paths (Radarr/Sonarr use /movies and /tv)
+  if (filePath.startsWith("/movies/")) {
+    filePath = filePath.replace("/movies/", `${settings.storage.moviesPath}/`)
+  } else if (filePath.startsWith("/tv/")) {
+    filePath = filePath.replace("/tv/", `${settings.storage.tvPath}/`)
+  }
+
   const allowedRoots = [settings.storage.moviesPath, settings.storage.tvPath].filter(Boolean)
   if (allowedRoots.length > 0 && !isPathAllowed(filePath, allowedRoots)) {
     return new NextResponse("Forbidden", { status: 403 })
