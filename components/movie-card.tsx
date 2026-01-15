@@ -14,6 +14,7 @@ interface MovieCardProps {
     genre: string
     poster: string
     type: "movie" | "tv"
+    source?: "library"
   }
   index: number
 }
@@ -26,7 +27,9 @@ const cardVariants = {
 export function MovieCard({ movie, index }: MovieCardProps) {
   const { status } = useSession()
   const isAuthed = status === "authenticated"
-  const href = isAuthed ? `/watch/${movie.id}?type=${movie.type}` : "/login"
+  const href = isAuthed
+    ? `/watch/${movie.id}?type=${movie.type}${movie.source === "library" ? "&source=library" : ""}`
+    : "/login"
 
   return (
     <motion.div

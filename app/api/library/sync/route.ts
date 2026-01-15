@@ -8,6 +8,16 @@ function formatSize(bytes?: number) {
   return `${gb.toFixed(1)} GB`
 }
 
+function formatRating(value?: number) {
+  if (!value || Number.isNaN(value)) return "N/A"
+  return value.toFixed(1)
+}
+
+function getImageUrl(images: any[] | undefined, coverType: string) {
+  const match = images?.find((image) => image.coverType === coverType)
+  return match?.remoteUrl || match?.url || undefined
+}
+
 async function fetchSonarr(url: string, apiKey: string): Promise<LibraryItem[]> {
   const response = await fetch(`${url}/api/v3/series`, {
     headers: { "X-Api-Key": apiKey },
@@ -16,14 +26,23 @@ async function fetchSonarr(url: string, apiKey: string): Promise<LibraryItem[]> 
     throw new Error(`Sonarr sync failed: ${response.status}`)
   }
   const data = await response.json()
-  return data.map((item: any) => ({
-    id: String(item.id ?? item.tvdbId ?? item.title),
-    title: item.title,
-    type: "tv" as const,
-    year: item.year,
-    quality: item.qualityProfileId ? `Profile ${item.qualityProfileId}` : "HD",
-    status: item.status || "available",
-  }))
+  return data.map((item: any) => {
+    const hasEpisodes = Number(item?.statistics?.episodeFileCount || 0) > 0
+    return {
+      id: String(item.id ?? item.tvdbId ?? item.title),
+      title: item.title,
+      type: "tv" as const,
+      year: item.year,
+      quality: item.qualityProfileId ? `Profile ${item.qualityProfileId}` : "HD",
+      status: hasEpisodes ? "available" : "processing",
+      overview: item.overview,
+      rating: formatRating(item?.ratings?.value),
+      poster: getImageUrl(item.images, "poster"),
+      backdrop: getImageUrl(item.images, "fanart") || getImageUrl(item.images, "banner"),
+      path: item.path,
+      tmdbId: item.tmdbId ?? undefined,
+    }
+  })
 }
 
 async function fetchRadarr(url: string, apiKey: string): Promise<LibraryItem[]> {
@@ -34,15 +53,25 @@ async function fetchRadarr(url: string, apiKey: string): Promise<LibraryItem[]> 
     throw new Error(`Radarr sync failed: ${response.status}`)
   }
   const data = await response.json()
-  return data.map((item: any) => ({
-    id: String(item.id ?? item.tmdbId ?? item.title),
-    title: item.title,
-    type: "movie" as const,
-    year: item.year,
-    quality: item.movieFile?.quality?.quality?.name || "HD",
-    size: formatSize(item.sizeOnDisk),
-    status: item.status || "available",
-  }))
+  return data.map((item: any) => {
+    const hasFile = Boolean(item.hasFile || item.movieFile?.path)
+    return {
+      id: String(item.id ?? item.tmdbId ?? item.title),
+      title: item.title,
+      type: "movie" as const,
+      year: item.year,
+      quality: item.movieFile?.quality?.quality?.name || "HD",
+      size: formatSize(item.movieFile?.size || item.sizeOnDisk),
+      status: hasFile ? "available" : "processing",
+      overview: item.overview,
+      rating: formatRating(item?.ratings?.value),
+      poster: getImageUrl(item.images, "poster"),
+      backdrop: getImageUrl(item.images, "fanart") || getImageUrl(item.images, "poster"),
+      runtime: item.runtime,
+      path: item.movieFile?.path,
+      tmdbId: item.tmdbId ?? undefined,
+    }
+  })
 }
 
 export async function POST() {

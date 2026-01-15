@@ -10,6 +10,7 @@ export interface MediaItem {
   genre: string
   poster: string
   type: "movie" | "tv"
+  source?: "library"
 }
 
 export interface MediaDetails {

@@ -7,10 +7,11 @@ export default async function MoviesLibraryPage() {
     id: movie.id,
     title: movie.title,
     year: movie.year,
-    rating: "N/A",
+    rating: movie.rating || "N/A",
     genre: movie.quality || "HD",
     poster: movie.poster || "/placeholder.svg",
     type: "movie" as const,
+    source: "library" as const,
   }))
 
   return (

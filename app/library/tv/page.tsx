@@ -7,10 +7,11 @@ export default async function TvLibraryPage() {
     id: show.id,
     title: show.title,
     year: show.year,
-    rating: "N/A",
+    rating: show.rating || "N/A",
     genre: show.quality || "HD",
     poster: show.poster || "/placeholder.svg",
     type: "tv" as const,
+    source: "library" as const,
   }))
 
   return (

@@ -9,6 +9,12 @@ export interface LibraryItem {
   quality?: string
   size?: string
   poster?: string
+  backdrop?: string
+  overview?: string
+  rating?: string
+  runtime?: number
+  path?: string
+  tmdbId?: number
   status?: string
 }
 
