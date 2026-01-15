@@ -1,50 +1,84 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { AppHeader } from "@/components/app-header"
 import { MovieCard } from "@/components/movie-card"
 import { UserActions } from "@/components/user-actions"
 import { motion } from "framer-motion"
+import { Loader2 } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
-const watchlistItems = [
-  {
-    id: "101",
-    title: "Blade Runner 2049",
-    year: 2017,
-    rating: "8.0",
-    genre: "Sci-Fi, Thriller",
-    poster: "https://image.tmdb.org/t/p/w500/aMpyrCizvSdc0UIMblJ1srVgAEF.jpg",
-    type: "movie" as const,
-  },
-  {
-    id: "102",
-    title: "The Bear",
-    year: 2022,
-    rating: "8.6",
-    genre: "Comedy, Drama",
-    poster: "https://image.tmdb.org/t/p/w500/9R0d2v0vS0r8b1yD9ZfJ5GQgVQp.jpg",
-    type: "tv" as const,
-  },
-  {
-    id: "103",
-    title: "The Batman",
-    year: 2022,
-    rating: "7.8",
-    genre: "Action, Crime",
-    poster: "https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg",
-    type: "movie" as const,
-  },
-  {
-    id: "104",
-    title: "Severance",
-    year: 2022,
-    rating: "8.7",
-    genre: "Drama, Sci-Fi",
-    poster: "https://image.tmdb.org/t/p/w500/pmTj1KwGzKJI6C8elV8h5C3p2gv.jpg",
-    type: "tv" as const,
-  },
-]
+interface WatchlistItem {
+  id: string
+  tmdbId: string
+  type: "movie" | "tv"
+}
 
 export default function WatchlistPage() {
+  const { data: session, status: sessionStatus } = useSession()
+  const router = useRouter()
+  const [items, setItems] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (sessionStatus === "unauthenticated") {
+      router.push("/login")
+      return
+    }
+    if (sessionStatus === "authenticated") {
+      loadWatchlist()
+    }
+  }, [sessionStatus, router])
+
+  const loadWatchlist = async () => {
+    try {
+      const response = await fetch("/api/watchlist")
+      if (response.ok) {
+        const watchlist: WatchlistItem[] = await response.json()
+        
+        // Fetch details for each item from TMDB via API
+        const details = await Promise.all(
+          watchlist.map(async (item) => {
+            try {
+              const detailsRes = await fetch(`/api/tmdb/details?id=${item.tmdbId}&type=${item.type}`)
+              if (detailsRes.ok) {
+                const details = await detailsRes.json()
+                return {
+                  id: item.tmdbId,
+                  title: details.title,
+                  year: details.year,
+                  rating: details.rating,
+                  genre: details.genre,
+                  poster: details.poster,
+                  type: item.type,
+                }
+              }
+              return null
+            } catch (error) {
+              console.error(`Failed to load details for ${item.tmdbId}:`, error)
+              return null
+            }
+          })
+        )
+
+        setItems(details.filter(Boolean))
+      }
+    } catch (error) {
+      console.error("Failed to load watchlist:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (sessionStatus === "loading" || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader rightSlot={<UserActions />} />
@@ -61,11 +95,20 @@ export default function WatchlistPage() {
             <p className="text-muted-foreground">Saved titles you want to watch later</p>
           </motion.div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {watchlistItems.map((movie, index) => (
-              <MovieCard key={movie.id} movie={movie} index={index} />
-            ))}
-          </div>
+          {items.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {items.map((movie, index) => (
+                <MovieCard key={movie.id} movie={movie} index={index} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20">
+              <p className="text-muted-foreground text-lg">Your watchlist is empty</p>
+              <p className="text-muted-foreground text-sm mt-2">
+                Add titles to your watchlist from the library or search
+              </p>
+            </div>
+          )}
         </div>
       </main>
     </div>

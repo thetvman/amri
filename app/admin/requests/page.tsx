@@ -1,60 +1,104 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { MenuBar } from "@/components/menu-bar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { motion } from "framer-motion"
-import { CheckCircle, XCircle, Clock, Film, Tv } from "lucide-react"
+import { CheckCircle, XCircle, Clock, Film, Tv, Loader2 } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
-// Mock requests data
-const mockRequests = [
-  {
-    id: "1",
-    user: "John Doe",
-    title: "Dune: Part Two",
-    type: "movie" as const,
-    year: 2024,
-    status: "pending" as const,
-    requestedAt: "2024-01-15T10:30:00Z",
-  },
-  {
-    id: "2",
-    user: "Jane Smith",
-    title: "The Last of Us",
-    type: "tv" as const,
-    year: 2023,
-    status: "pending" as const,
-    requestedAt: "2024-01-15T08:15:00Z",
-  },
-  {
-    id: "3",
-    user: "Mike Johnson",
-    title: "Oppenheimer",
-    type: "movie" as const,
-    year: 2023,
-    status: "approved" as const,
-    requestedAt: "2024-01-14T14:20:00Z",
-  },
-  {
-    id: "4",
-    user: "Sarah Williams",
-    title: "House of the Dragon",
-    type: "tv" as const,
-    year: 2022,
-    status: "denied" as const,
-    requestedAt: "2024-01-13T16:45:00Z",
-  },
-]
+interface Request {
+  id: string
+  title: string
+  type: "movie" | "tv"
+  year?: number | null
+  status: "pending" | "approved" | "denied"
+  requestedAt: string
+  requester: {
+    name: string | null
+    email: string
+  }
+}
 
 export default function AdminRequests() {
-  const handleApprove = (id: string) => {
-    console.log("Approve request:", id)
+  const { data: session, status: sessionStatus } = useSession()
+  const router = useRouter()
+  const [requests, setRequests] = useState<Request[]>([])
+  const [loading, setLoading] = useState(true)
+  const [processing, setProcessing] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (sessionStatus === "unauthenticated") {
+      router.push("/login")
+      return
+    }
+    if (sessionStatus === "authenticated" && session?.user?.role === "admin") {
+      loadRequests()
+    }
+  }, [sessionStatus, session, router])
+
+  const loadRequests = async () => {
+    try {
+      const response = await fetch("/api/requests")
+      if (response.ok) {
+        const data = await response.json()
+        setRequests(data)
+      }
+    } catch (error) {
+      console.error("Failed to load requests:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleDeny = (id: string) => {
-    console.log("Deny request:", id)
+  const handleApprove = async (id: string) => {
+    setProcessing(id)
+    try {
+      const response = await fetch(`/api/requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "approved" }),
+      })
+
+      if (response.ok) {
+        await loadRequests()
+      } else {
+        const error = await response.json()
+        alert(error.error || "Failed to approve request")
+      }
+    } catch (error) {
+      console.error("Failed to approve:", error)
+      alert("Failed to approve request")
+    } finally {
+      setProcessing(null)
+    }
+  }
+
+  const handleDeny = async (id: string) => {
+    setProcessing(id)
+    try {
+      const response = await fetch(`/api/requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "denied" }),
+      })
+
+      if (response.ok) {
+        await loadRequests()
+      } else {
+        const error = await response.json()
+        alert(error.error || "Failed to deny request")
+      }
+    } catch (error) {
+      console.error("Failed to deny:", error)
+      alert("Failed to deny request")
+    } finally {
+      setProcessing(null)
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -70,9 +114,18 @@ export default function AdminRequests() {
     }
   }
 
+  if (sessionStatus === "loading" || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  const pendingRequests = requests.filter((r) => r.status === "pending")
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/40">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4">
@@ -86,7 +139,6 @@ export default function AdminRequests() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-4">
           <motion.div
@@ -106,71 +158,91 @@ export default function AdminRequests() {
           >
             <Card className="bg-card/60 backdrop-blur-lg border-border/40">
               <CardHeader>
-                <CardTitle>Pending Requests</CardTitle>
+                <CardTitle>All Requests</CardTitle>
                 <CardDescription>
-                  {mockRequests.filter(r => r.status === "pending").length} requests awaiting review
+                  {pendingRequests.length} pending requests awaiting review
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Year</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Requested</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockRequests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell className="font-medium">{request.user}</TableCell>
-                        <TableCell>{request.title}</TableCell>
-                        <TableCell>
-                          {request.type === "movie" ? (
-                            <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                              <Film className="h-3 w-3" /> Movie
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                              <Tv className="h-3 w-3" /> TV Show
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>{request.year}</TableCell>
-                        <TableCell>{getStatusBadge(request.status)}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {new Date(request.requestedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {request.status === "pending" && (
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleApprove(request.id)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDeny(request.id)}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Deny
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
+                {requests.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Year</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Requested</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {requests.map((request) => (
+                        <TableRow key={request.id}>
+                          <TableCell className="font-medium">
+                            {request.requester.name || request.requester.email}
+                          </TableCell>
+                          <TableCell>{request.title}</TableCell>
+                          <TableCell>
+                            {request.type === "movie" ? (
+                              <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                                <Film className="h-3 w-3" /> Movie
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                                <Tv className="h-3 w-3" /> TV Show
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>{request.year || "N/A"}</TableCell>
+                          <TableCell>{getStatusBadge(request.status)}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {new Date(request.requestedAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {request.status === "pending" && (
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleApprove(request.id)}
+                                  disabled={processing === request.id}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  {processing === request.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="h-4 w-4 mr-1" />
+                                      Approve
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeny(request.id)}
+                                  disabled={processing === request.id}
+                                >
+                                  {processing === request.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <XCircle className="h-4 w-4 mr-1" />
+                                      Deny
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">No requests found</p>
+                )}
               </CardContent>
             </Card>
           </motion.div>

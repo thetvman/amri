@@ -1,31 +1,72 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { MenuBar } from "@/components/menu-bar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { motion } from "framer-motion"
-import { Users, FileText, Film, Tv, TrendingUp, HardDrive, Activity } from "lucide-react"
+import { Users, FileText, Film, Tv, HardDrive, Activity, Loader2 } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
-// Mock stats data
-const stats = {
-  totalUsers: 24,
-  activeUsers: 18,
-  pendingRequests: 7,
-  totalMovies: 342,
-  totalTVShows: 128,
-  storageUsed: "12.4",
-  storageTotal: "96",
-  recentActivity: [
-    { user: "John Doe", action: "Requested", item: "Dune: Part Two", time: "2 hours ago" },
-    { user: "Jane Smith", action: "Watched", item: "The Last of Us S01E05", time: "4 hours ago" },
-    { user: "Mike Johnson", action: "Requested", item: "Oppenheimer", time: "6 hours ago" },
-  ],
+interface Stats {
+  totalUsers: number
+  activeUsers: number
+  pendingRequests: number
+  totalMovies: number
+  totalTVShows: number
+  storageUsed: string
+  storageTotal: string
 }
 
 export default function AdminDashboard() {
+  const { data: session, status: sessionStatus } = useSession()
+  const router = useRouter()
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (sessionStatus === "unauthenticated") {
+      router.push("/login")
+      return
+    }
+    if (sessionStatus === "authenticated" && session?.user?.role === "admin") {
+      loadStats()
+    }
+  }, [sessionStatus, session, router])
+
+  const loadStats = async () => {
+    try {
+      const response = await fetch("/api/admin/stats")
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      }
+    } catch (error) {
+      console.error("Failed to load stats:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (sessionStatus === "loading" || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!stats) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Failed to load stats</p>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/40">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4">
@@ -39,7 +80,6 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-4">
           <motion.div
@@ -52,7 +92,6 @@ export default function AdminDashboard() {
             <p className="text-muted-foreground">Monitor your media server at a glance</p>
           </motion.div>
 
-          {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -126,55 +165,12 @@ export default function AdminDashboard() {
                 <CardContent>
                   <div className="text-2xl font-bold">{stats.storageUsed} TB</div>
                   <p className="text-xs text-muted-foreground">
-                    of {stats.storageTotal} TB used
+                    {stats.storageTotal !== "0" ? `of ${stats.storageTotal} TB used` : "Storage info unavailable"}
                   </p>
                 </CardContent>
               </Card>
             </motion.div>
           </div>
-
-          {/* Recent Activity */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Card className="bg-card/60 backdrop-blur-lg border-border/40">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Recent Activity
-                </CardTitle>
-                <CardDescription>Latest user actions on the platform</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {stats.recentActivity.map((activity, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.6 + index * 0.1 }}
-                      className="flex items-center justify-between p-4 rounded-lg bg-card/40 border border-border/20"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{activity.user}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {activity.action} <span className="font-medium">{activity.item}</span>
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant="secondary">{activity.time}</Badge>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
         </div>
       </main>
     </div>

@@ -1,17 +1,64 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { AppHeader } from "@/components/app-header"
 import { UserActions } from "@/components/user-actions"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
 import { motion } from "framer-motion"
-import { Camera, Shield, Bell } from "lucide-react"
+import { Camera, Loader2 } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
 export default function ProfilePage() {
+  const { data: session, status: sessionStatus } = useSession()
+  const router = useRouter()
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (sessionStatus === "unauthenticated") {
+      router.push("/login")
+      return
+    }
+    if (session?.user) {
+      setName(session.user.name || "")
+      setEmail(session.user.email || "")
+    }
+  }, [session, sessionStatus, router])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      // TODO: Add API route to update user profile
+      alert("Profile update coming soon")
+    } catch (error) {
+      console.error("Failed to save:", error)
+      alert("Failed to save profile")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (sessionStatus === "loading") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  const initials = (session?.user?.name || session?.user?.email || "AM")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader rightSlot={<UserActions />} />
@@ -42,9 +89,9 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-4">
                   <div className="w-24 h-24 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-2xl font-bold text-primary">
-                    AM
+                    {initials}
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" disabled>
                     <Camera className="h-4 w-4 mr-2" />
                     Upload Photo
                   </Button>
@@ -67,47 +114,34 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Full name</Label>
-                      <Input id="name" defaultValue="Amri Example" />
+                      <Input
+                        id="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        disabled={loading}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" defaultValue="amri@example.com" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        disabled
+                        className="bg-muted"
+                      />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea id="bio" placeholder="Tell your family about your taste in movies..." />
-                  </div>
-                  <Button>Save changes</Button>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-card/60 backdrop-blur-lg border-border/40">
-                <CardHeader>
-                  <CardTitle>Preferences</CardTitle>
-                  <CardDescription>Personalize your experience</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium flex items-center gap-2">
-                        <Bell className="h-4 w-4" />
-                        Request Notifications
-                      </p>
-                      <p className="text-sm text-muted-foreground">Get notified when requests are approved</p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium flex items-center gap-2">
-                        <Shield className="h-4 w-4" />
-                        Parental Controls
-                      </p>
-                      <p className="text-sm text-muted-foreground">Filter mature content in your library</p>
-                    </div>
-                    <Switch />
-                  </div>
+                  <Button onClick={handleSave} disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save changes"
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             </motion.div>
@@ -117,3 +151,4 @@ export default function ProfilePage() {
     </div>
   )
 }
+

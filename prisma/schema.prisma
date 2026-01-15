@@ -8,15 +8,19 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String      @id @default(cuid())
+  email        String      @unique
   passwordHash String
   name         String?
-  role         String   @default("user")
-  inviteUsed   Invite?  @relation("InviteUsed")
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role         String      @default("user")
+  inviteUsed   Invite?     @relation("InviteUsed")
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  requests     Request[]   @relation("UserRequests")
+  approved     Request[]   @relation("ApprovedRequests")
+  denied       Request[]   @relation("DeniedRequests")
+  watchlist    Watchlist[] @relation("UserWatchlist")
 }
 
 model Invite {
@@ -28,4 +32,37 @@ model Invite {
   createdAt DateTime @default(now())
 
   usedBy User? @relation("InviteUsed", fields: [usedById], references: [id])
+}
+
+model Request {
+  id          String    @id @default(cuid())
+  tmdbId      String
+  title       String
+  type        String    // "movie" or "tv"
+  year        Int?
+  poster      String?
+  requestedBy String
+  status      String    @default("pending") // "pending", "approved", "denied"
+  approvedBy  String?
+  deniedBy    String?
+  approvedAt  DateTime?
+  deniedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  requester User @relation("UserRequests", fields: [requestedBy], references: [id])
+  approver  User? @relation("ApprovedRequests", fields: [approvedBy], references: [id])
+  denier    User? @relation("DeniedRequests", fields: [deniedBy], references: [id])
+}
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  tmdbId    String
+  type      String   // "movie" or "tv"
+  userId    String
+  createdAt DateTime @default(now())
+
+  user User @relation("UserWatchlist", fields: [userId], references: [id])
+
+  @@unique([userId, tmdbId, type])
 }
