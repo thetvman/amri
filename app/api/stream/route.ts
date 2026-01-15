@@ -3,8 +3,7 @@ import { createReadStream } from "fs"
 import { stat } from "fs/promises"
 import path from "path"
 import { lookup } from "mime-types"
-import { getServerSession } from "next-auth"
-import { authConfig } from "@/lib/auth"
+import { auth } from "@/app/api/auth/[...nextauth]/route"
 import { getSettings } from "@/lib/settings"
 
 function isPathAllowed(filePath: string, allowedRoots: string[]) {
@@ -16,7 +15,7 @@ function isPathAllowed(filePath: string, allowedRoots: string[]) {
 }
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authConfig)
+  const session = await auth()
   if (!session) {
     return new NextResponse("Unauthorized", { status: 401 })
   }
