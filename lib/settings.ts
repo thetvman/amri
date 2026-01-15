@@ -7,9 +7,21 @@ export interface IntegrationConfig {
   apiKey: string
 }
 
+export interface StorageConfig {
+  moviesPath: string
+  tvPath: string
+}
+
+export interface ServerConfig {
+  transcodeQuality: "auto" | "1080p" | "720p" | "480p"
+  maxConcurrentTranscodes: number
+}
+
 export interface Settings {
   sonarr: IntegrationConfig
   radarr: IntegrationConfig
+  storage: StorageConfig
+  server: ServerConfig
 }
 
 const defaultSettings: Settings = {
@@ -23,6 +35,14 @@ const defaultSettings: Settings = {
     url: "",
     apiKey: "",
   },
+  storage: {
+    moviesPath: "/movies",
+    tvPath: "/tv",
+  },
+  server: {
+    transcodeQuality: "auto",
+    maxConcurrentTranscodes: 4,
+  },
 }
 
 const settingsPath = path.join(process.cwd(), "data", "settings.json")
@@ -30,7 +50,19 @@ const settingsPath = path.join(process.cwd(), "data", "settings.json")
 export async function getSettings(): Promise<Settings> {
   try {
     const raw = await fs.readFile(settingsPath, "utf-8")
-    return { ...defaultSettings, ...JSON.parse(raw) }
+    const parsed = JSON.parse(raw)
+    return {
+      ...defaultSettings,
+      ...parsed,
+      storage: {
+        ...defaultSettings.storage,
+        ...(parsed.storage || {}),
+      },
+      server: {
+        ...defaultSettings.server,
+        ...(parsed.server || {}),
+      },
+    }
   } catch {
     return defaultSettings
   }
@@ -52,6 +84,24 @@ export async function updateIntegration(
     [name]: {
       ...settings[name],
       ...update,
+    },
+  }
+  await saveSettings(nextSettings)
+  return nextSettings
+}
+
+export async function updateSettings(update: Partial<Settings>): Promise<Settings> {
+  const settings = await getSettings()
+  const nextSettings: Settings = {
+    ...settings,
+    ...update,
+    storage: {
+      ...settings.storage,
+      ...(update.storage || {}),
+    },
+    server: {
+      ...settings.server,
+      ...(update.server || {}),
     },
   }
   await saveSettings(nextSettings)

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { motion } from "framer-motion"
 import { Save, HardDrive, Server, Database, Plug, Download, RefreshCw } from "lucide-react"
 
@@ -15,6 +16,16 @@ interface IntegrationState {
   apiKey: string
   status?: string
   loading?: boolean
+}
+
+interface StorageState {
+  moviesPath: string
+  tvPath: string
+}
+
+interface ServerState {
+  transcodeQuality: "auto" | "1080p" | "720p" | "480p"
+  maxConcurrentTranscodes: number
 }
 
 export default function AdminSettings() {
@@ -28,16 +39,32 @@ export default function AdminSettings() {
     url: "",
     apiKey: "",
   })
+  const [storage, setStorage] = useState<StorageState>({
+    moviesPath: "/movies",
+    tvPath: "/tv",
+  })
+  const [server, setServer] = useState<ServerState>({
+    transcodeQuality: "auto",
+    maxConcurrentTranscodes: 4,
+  })
   const [maintenanceStatus, setMaintenanceStatus] = useState<string>("")
+  const [saveStatus, setSaveStatus] = useState<string>("")
 
   useEffect(() => {
     const loadSettings = async () => {
-      const [sonarrRes, radarrRes] = await Promise.all([
+      const [sonarrRes, radarrRes, settingsRes] = await Promise.all([
         fetch("/api/integrations/sonarr").then((res) => res.json()),
         fetch("/api/integrations/radarr").then((res) => res.json()),
+        fetch("/api/settings").then((res) => res.json()),
       ])
       setSonarr((prev) => ({ ...prev, ...sonarrRes }))
       setRadarr((prev) => ({ ...prev, ...radarrRes }))
+      if (settingsRes.storage) {
+        setStorage((prev) => ({ ...prev, ...settingsRes.storage }))
+      }
+      if (settingsRes.server) {
+        setServer((prev) => ({ ...prev, ...settingsRes.server }))
+      }
     }
     loadSettings()
   }, [])
@@ -99,6 +126,43 @@ export default function AdminSettings() {
     const response = await fetch("/api/maintenance/update", { method: "POST" })
     const data = await response.json()
     setMaintenanceStatus(data.message || "Update scheduled")
+  }
+
+  const handleSaveAll = async () => {
+    setSaveStatus("Saving...")
+    try {
+      await Promise.all([
+        fetch("/api/integrations/sonarr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: sonarr.url,
+            apiKey: sonarr.apiKey,
+            enabled: sonarr.enabled,
+          }),
+        }),
+        fetch("/api/integrations/radarr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: radarr.url,
+            apiKey: radarr.apiKey,
+            enabled: radarr.enabled,
+          }),
+        }),
+        fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            storage,
+            server,
+          }),
+        }),
+      ])
+      setSaveStatus("Saved")
+    } catch (error: any) {
+      setSaveStatus(error?.message || "Save failed")
+    }
   }
   return (
     <div className="min-h-screen bg-background">
@@ -168,6 +232,14 @@ export default function AdminSettings() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      <Switch
+                        id="sonarr-enabled"
+                        checked={sonarr.enabled}
+                        onCheckedChange={(checked) => setSonarr((prev) => ({ ...prev, enabled: checked }))}
+                      />
+                      <Label htmlFor="sonarr-enabled">Enable Sonarr integration</Label>
+                    </div>
+                    <div className="flex items-center gap-3">
                       <Button variant="outline" onClick={() => testIntegration("sonarr")} disabled={sonarr.loading}>
                         Test connection
                       </Button>
@@ -199,6 +271,14 @@ export default function AdminSettings() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      <Switch
+                        id="radarr-enabled"
+                        checked={radarr.enabled}
+                        onCheckedChange={(checked) => setRadarr((prev) => ({ ...prev, enabled: checked }))}
+                      />
+                      <Label htmlFor="radarr-enabled">Enable Radarr integration</Label>
+                    </div>
+                    <div className="flex items-center gap-3">
                       <Button variant="outline" onClick={() => testIntegration("radarr")} disabled={radarr.loading}>
                         Test connection
                       </Button>
@@ -227,18 +307,18 @@ export default function AdminSettings() {
                 <CardContent className="space-y-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Movies Path</label>
-                    <input
+                    <Input
                       type="text"
-                      defaultValue="/media/library/movies"
-                      className="w-full px-4 py-2 rounded-lg bg-card/40 border border-border/40 text-foreground"
+                      value={storage.moviesPath}
+                      onChange={(event) => setStorage((prev) => ({ ...prev, moviesPath: event.target.value }))}
                     />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">TV Shows Path</label>
-                    <input
+                    <Input
                       type="text"
-                      defaultValue="/media/library/tv"
-                      className="w-full px-4 py-2 rounded-lg bg-card/40 border border-border/40 text-foreground"
+                      value={storage.tvPath}
+                      onChange={(event) => setStorage((prev) => ({ ...prev, tvPath: event.target.value }))}
                     />
                   </div>
                 </CardContent>
@@ -262,19 +342,33 @@ export default function AdminSettings() {
                 <CardContent className="space-y-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Transcoding Quality</label>
-                    <select className="w-full px-4 py-2 rounded-lg bg-card/40 border border-border/40 text-foreground">
-                      <option>Auto (Recommended)</option>
-                      <option>1080p</option>
-                      <option>720p</option>
-                      <option>480p</option>
+                    <select
+                      className="w-full px-4 py-2 rounded-lg bg-card/40 border border-border/40 text-foreground"
+                      value={server.transcodeQuality}
+                      onChange={(event) =>
+                        setServer((prev) => ({
+                          ...prev,
+                          transcodeQuality: event.target.value as ServerState["transcodeQuality"],
+                        }))
+                      }
+                    >
+                      <option value="auto">Auto (Recommended)</option>
+                      <option value="1080p">1080p</option>
+                      <option value="720p">720p</option>
+                      <option value="480p">480p</option>
                     </select>
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Max Concurrent Transcodes</label>
-                    <input
+                    <Input
                       type="number"
-                      defaultValue="4"
-                      className="w-full px-4 py-2 rounded-lg bg-card/40 border border-border/40 text-foreground"
+                      value={server.maxConcurrentTranscodes}
+                      onChange={(event) =>
+                        setServer((prev) => ({
+                          ...prev,
+                          maxConcurrentTranscodes: Number(event.target.value) || 0,
+                        }))
+                      }
                     />
                   </div>
                 </CardContent>
@@ -345,10 +439,13 @@ export default function AdminSettings() {
               transition={{ delay: 0.4 }}
               className="flex justify-end"
             >
-              <Button size="lg" className="bg-primary hover:bg-primary/90">
+              <div className="flex items-center gap-3">
+                {saveStatus && <span className="text-sm text-muted-foreground">{saveStatus}</span>}
+                <Button size="lg" className="bg-primary hover:bg-primary/90" onClick={handleSaveAll}>
                 <Save className="h-4 w-4 mr-2" />
                 Save Settings
-              </Button>
+                </Button>
+              </div>
             </motion.div>
           </div>
         </div>
