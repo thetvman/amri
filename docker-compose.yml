@@ -68,7 +68,7 @@ services:
         hard: 65536
 
   jellyseerr:
-    image: fallingwind/jellyseerr:latest
+    image: fallenbagel/jellyseerr:latest
     container_name: jellyseerr
     environment:
       - LOG_LEVEL=debug
