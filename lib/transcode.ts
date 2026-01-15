@@ -27,22 +27,33 @@ export function needsTranscoding(filePath: string, targetQuality: string): boole
 }
 
 // Get FFmpeg path (will be installed via package)
-function getFFmpegPath(): string {
+function getFFmpegPath(): string | null {
   // Try to find ffmpeg in common locations
   const possiblePaths = [
     "ffmpeg", // System PATH
     "/usr/bin/ffmpeg",
     "/usr/local/bin/ffmpeg",
+    "/opt/homebrew/bin/ffmpeg",
     process.platform === "win32" ? "C:\\ffmpeg\\bin\\ffmpeg.exe" : undefined,
   ].filter(Boolean) as string[]
 
   for (const ffmpegPath of possiblePaths) {
-    if (existsSync(ffmpegPath) || ffmpegPath === "ffmpeg") {
+    if (ffmpegPath === "ffmpeg") {
+      // Check if ffmpeg is in PATH by trying to spawn it
+      try {
+        const { execSync } = require("child_process")
+        execSync("which ffmpeg", { stdio: "ignore" })
+        return "ffmpeg"
+      } catch {
+        continue
+      }
+    }
+    if (existsSync(ffmpegPath)) {
       return ffmpegPath
     }
   }
 
-  throw new Error("FFmpeg not found. Please install FFmpeg.")
+  return null
 }
 
 // Get quality settings
@@ -101,6 +112,10 @@ export async function transcodeVideo(
   }
 
   const ffmpegPath = getFFmpegPath()
+  if (!ffmpegPath) {
+    throw new Error("FFmpeg not found. Please install FFmpeg: sudo apt install ffmpeg")
+  }
+  
   const args: string[] = [
     "-i",
     inputPath,
@@ -182,6 +197,43 @@ export async function streamTranscoded(
 ): Promise<{ stream: NodeJS.ReadableStream; headers: Record<string, string>; status: number }> {
   if (quality === "original") {
     // Stream original file
+    const { createReadStream } = await import("fs")
+    const { stat } = await import("fs/promises")
+    const stats = await stat(inputPath)
+    const contentType = (lookup(inputPath) || "video/mp4").toString()
+
+    if (range) {
+      const [startStr, endStr] = range.replace(/bytes=/, "").split("-")
+      const start = Number(startStr)
+      const end = endStr ? Number(endStr) : stats.size - 1
+      const chunkSize = end - start + 1
+
+      return {
+        stream: createReadStream(inputPath, { start, end }),
+        headers: {
+          "Content-Range": `bytes ${start}-${end}/${stats.size}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": chunkSize.toString(),
+          "Content-Type": contentType,
+        },
+        status: 206,
+      }
+    }
+
+    return {
+      stream: createReadStream(inputPath),
+      headers: {
+        "Content-Length": stats.size.toString(),
+        "Content-Type": contentType,
+      },
+      status: 200,
+    }
+  }
+
+  // Check if FFmpeg is available
+  const ffmpegPath = getFFmpegPath()
+  if (!ffmpegPath) {
+    // FFmpeg not found, stream original file
     const { createReadStream } = await import("fs")
     const { stat } = await import("fs/promises")
     const stats = await stat(inputPath)
