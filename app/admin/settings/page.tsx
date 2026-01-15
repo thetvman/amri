@@ -28,6 +28,13 @@ interface ServerState {
   maxConcurrentTranscodes: number
 }
 
+interface TranscodeState {
+  enabled: boolean
+  defaultQuality: "1080p" | "720p" | "480p" | "360p" | "original"
+  maxConcurrent: number
+  cacheEnabled: boolean
+}
+
 export default function AdminSettings() {
   const [sonarr, setSonarr] = useState<IntegrationState>({
     enabled: false,
@@ -47,6 +54,12 @@ export default function AdminSettings() {
     transcodeQuality: "auto",
     maxConcurrentTranscodes: 4,
   })
+  const [transcoding, setTranscoding] = useState<TranscodeState>({
+    enabled: true,
+    defaultQuality: "720p",
+    maxConcurrent: 2,
+    cacheEnabled: true,
+  })
   const [maintenanceStatus, setMaintenanceStatus] = useState<string>("")
   const [saveStatus, setSaveStatus] = useState<string>("")
 
@@ -64,6 +77,9 @@ export default function AdminSettings() {
       }
       if (settingsRes.server) {
         setServer((prev) => ({ ...prev, ...settingsRes.server }))
+      }
+      if (settingsRes.transcoding) {
+        setTranscoding((prev) => ({ ...prev, ...settingsRes.transcoding }))
       }
     }
     loadSettings()
@@ -156,12 +172,15 @@ export default function AdminSettings() {
           body: JSON.stringify({
             storage,
             server,
+            transcoding,
           }),
         }),
       ])
-      setSaveStatus("Saved")
-    } catch (error: any) {
-      setSaveStatus(error?.message || "Save failed")
+      setSaveStatus("Settings saved successfully")
+      setTimeout(() => setSaveStatus(""), 3000)
+    } catch (error) {
+      console.error("Failed to save:", error)
+      setSaveStatus("Error saving settings")
     }
   }
   return (
@@ -340,37 +359,69 @@ export default function AdminSettings() {
                   <CardDescription>Media server and transcoding settings</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Transcoding Quality</label>
-                    <select
-                      className="w-full px-4 py-2 rounded-lg bg-card/40 border border-border/40 text-foreground"
-                      value={server.transcodeQuality}
-                      onChange={(event) =>
-                        setServer((prev) => ({
-                          ...prev,
-                          transcodeQuality: event.target.value as ServerState["transcodeQuality"],
-                        }))
-                      }
-                    >
-                      <option value="auto">Auto (Recommended)</option>
-                      <option value="1080p">1080p</option>
-                      <option value="720p">720p</option>
-                      <option value="480p">480p</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Max Concurrent Transcodes</label>
-                    <Input
-                      type="number"
-                      value={server.maxConcurrentTranscodes}
-                      onChange={(event) =>
-                        setServer((prev) => ({
-                          ...prev,
-                          maxConcurrentTranscodes: Number(event.target.value) || 0,
-                        }))
-                      }
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="transcode-enabled">Enable Transcoding</Label>
+                      <p className="text-sm text-muted-foreground">Transcode videos for better compatibility</p>
+                    </div>
+                    <Switch
+                      id="transcode-enabled"
+                      checked={transcoding.enabled}
+                      onCheckedChange={(checked) => setTranscoding((prev) => ({ ...prev, enabled: checked }))}
                     />
                   </div>
+                  {transcoding.enabled && (
+                    <>
+                      <div>
+                        <Label htmlFor="transcode-quality">Default Quality</Label>
+                        <select
+                          id="transcode-quality"
+                          className="w-full px-4 py-2 rounded-lg bg-card/40 border border-border/40 text-foreground mt-2"
+                          value={transcoding.defaultQuality}
+                          onChange={(event) =>
+                            setTranscoding((prev) => ({
+                              ...prev,
+                              defaultQuality: event.target.value as TranscodeState["defaultQuality"],
+                            }))
+                          }
+                        >
+                          <option value="original">Original (No Transcoding)</option>
+                          <option value="1080p">1080p</option>
+                          <option value="720p">720p</option>
+                          <option value="480p">480p</option>
+                          <option value="360p">360p</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label htmlFor="transcode-max">Max Concurrent Transcodes</Label>
+                        <Input
+                          id="transcode-max"
+                          type="number"
+                          min="1"
+                          max="8"
+                          value={transcoding.maxConcurrent}
+                          onChange={(event) =>
+                            setTranscoding((prev) => ({
+                              ...prev,
+                              maxConcurrent: Number(event.target.value) || 1,
+                            }))
+                          }
+                          className="mt-2"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="transcode-cache">Enable Cache</Label>
+                          <p className="text-sm text-muted-foreground">Cache transcoded files for faster playback</p>
+                        </div>
+                        <Switch
+                          id="transcode-cache"
+                          checked={transcoding.cacheEnabled}
+                          onCheckedChange={(checked) => setTranscoding((prev) => ({ ...prev, cacheEnabled: checked }))}
+                        />
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>

@@ -12,6 +12,13 @@ export interface StorageConfig {
   tvPath: string
 }
 
+export interface TranscodeConfig {
+  enabled: boolean
+  defaultQuality: "1080p" | "720p" | "480p" | "360p" | "original"
+  maxConcurrent: number
+  cacheEnabled: boolean
+}
+
 export interface ServerConfig {
   transcodeQuality: "auto" | "1080p" | "720p" | "480p"
   maxConcurrentTranscodes: number
@@ -22,6 +29,7 @@ export interface Settings {
   radarr: IntegrationConfig
   storage: StorageConfig
   server: ServerConfig
+  transcoding: TranscodeConfig
 }
 
 const defaultSettings: Settings = {
@@ -43,6 +51,12 @@ const defaultSettings: Settings = {
     transcodeQuality: "auto",
     maxConcurrentTranscodes: 4,
   },
+  transcoding: {
+    enabled: true,
+    defaultQuality: "720p",
+    maxConcurrent: 2,
+    cacheEnabled: true,
+  },
 }
 
 const settingsPath = path.join(process.cwd(), "data", "settings.json")
@@ -61,6 +75,10 @@ export async function getSettings(): Promise<Settings> {
       server: {
         ...defaultSettings.server,
         ...(parsed.server || {}),
+      },
+      transcoding: {
+        ...defaultSettings.transcoding,
+        ...(parsed.transcoding || {}),
       },
     }
   } catch {
@@ -102,6 +120,10 @@ export async function updateSettings(update: Partial<Settings>): Promise<Setting
     server: {
       ...settings.server,
       ...(update.server || {}),
+    },
+    transcoding: {
+      ...settings.transcoding,
+      ...(update.transcoding || {}),
     },
   }
   await saveSettings(nextSettings)

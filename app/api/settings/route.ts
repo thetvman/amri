@@ -11,6 +11,7 @@ export async function POST(request: Request) {
   const settings = await updateSettings({
     storage: body.storage,
     server: body.server,
+    transcoding: body.transcoding,
   })
   return NextResponse.json(settings)
 }
