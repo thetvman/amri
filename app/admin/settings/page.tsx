@@ -24,15 +24,7 @@ interface StorageState {
 }
 
 interface ServerState {
-  transcodeQuality: "auto" | "1080p" | "720p" | "480p"
-  maxConcurrentTranscodes: number
-}
-
-interface TranscodeState {
-  enabled: boolean
-  defaultQuality: "1080p" | "720p" | "480p" | "360p" | "original"
-  maxConcurrent: number
-  cacheEnabled: boolean
+  // Reserved for future server settings
 }
 
 export default function AdminSettings() {
@@ -50,16 +42,7 @@ export default function AdminSettings() {
     moviesPath: "/movies",
     tvPath: "/tv",
   })
-  const [server, setServer] = useState<ServerState>({
-    transcodeQuality: "auto",
-    maxConcurrentTranscodes: 4,
-  })
-  const [transcoding, setTranscoding] = useState<TranscodeState>({
-    enabled: true,
-    defaultQuality: "720p",
-    maxConcurrent: 2,
-    cacheEnabled: true,
-  })
+  const [server, setServer] = useState<ServerState>({})
   const [maintenanceStatus, setMaintenanceStatus] = useState<string>("")
   const [saveStatus, setSaveStatus] = useState<string>("")
 
@@ -77,9 +60,6 @@ export default function AdminSettings() {
       }
       if (settingsRes.server) {
         setServer((prev) => ({ ...prev, ...settingsRes.server }))
-      }
-      if (settingsRes.transcoding) {
-        setTranscoding((prev) => ({ ...prev, ...settingsRes.transcoding }))
       }
     }
     loadSettings()
@@ -172,7 +152,6 @@ export default function AdminSettings() {
           body: JSON.stringify({
             storage,
             server,
-            transcoding,
           }),
         }),
       ])
@@ -356,72 +335,12 @@ export default function AdminSettings() {
                     <Server className="h-5 w-5" />
                     Server Configuration
                   </CardTitle>
-                  <CardDescription>Media server and transcoding settings</CardDescription>
+                  <CardDescription>Media server settings</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="transcode-enabled">Enable Transcoding</Label>
-                      <p className="text-sm text-muted-foreground">Transcode videos for better compatibility</p>
-                    </div>
-                    <Switch
-                      id="transcode-enabled"
-                      checked={transcoding.enabled}
-                      onCheckedChange={(checked) => setTranscoding((prev) => ({ ...prev, enabled: checked }))}
-                    />
-                  </div>
-                  {transcoding.enabled && (
-                    <>
-                      <div>
-                        <Label htmlFor="transcode-quality">Default Quality</Label>
-                        <select
-                          id="transcode-quality"
-                          className="w-full px-4 py-2 rounded-lg bg-card/40 border border-border/40 text-foreground mt-2"
-                          value={transcoding.defaultQuality}
-                          onChange={(event) =>
-                            setTranscoding((prev) => ({
-                              ...prev,
-                              defaultQuality: event.target.value as TranscodeState["defaultQuality"],
-                            }))
-                          }
-                        >
-                          <option value="original">Original (No Transcoding)</option>
-                          <option value="1080p">1080p</option>
-                          <option value="720p">720p</option>
-                          <option value="480p">480p</option>
-                          <option value="360p">360p</option>
-                        </select>
-                      </div>
-                      <div>
-                        <Label htmlFor="transcode-max">Max Concurrent Transcodes</Label>
-                        <Input
-                          id="transcode-max"
-                          type="number"
-                          min="1"
-                          max="8"
-                          value={transcoding.maxConcurrent}
-                          onChange={(event) =>
-                            setTranscoding((prev) => ({
-                              ...prev,
-                              maxConcurrent: Number(event.target.value) || 1,
-                            }))
-                          }
-                          className="mt-2"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="transcode-cache">Enable Cache</Label>
-                          <p className="text-sm text-muted-foreground">Cache transcoded files for faster playback</p>
-                        </div>
-                        <Switch
-                          id="transcode-cache"
-                          checked={transcoding.cacheEnabled}
-                          onCheckedChange={(checked) => setTranscoding((prev) => ({ ...prev, cacheEnabled: checked }))}
-                        />
-                      </div>
-                    </>
-                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Use Jellyfin for transcoding and media streaming. Configure Jellyfin separately.
+                  </p>
                 </CardContent>
               </Card>
             </motion.div>

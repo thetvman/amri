@@ -5,7 +5,6 @@ import path from "path"
 import { lookup } from "mime-types"
 import { auth } from "@/app/api/auth/[...nextauth]/route"
 import { getSettings } from "@/lib/settings"
-import { streamTranscoded, needsTranscoding } from "@/lib/transcode"
 
 function isPathAllowed(filePath: string, allowedRoots: string[]) {
   const resolvedPath = path.resolve(filePath)
@@ -43,34 +42,7 @@ export async function GET(request: Request) {
 
   const stats = await stat(filePath)
   const range = request.headers.get("range")
-  const quality = searchParams.get("quality") || settings.transcoding.defaultQuality
   const contentType = (lookup(filePath) || "application/octet-stream").toString()
-
-  // Check if this is a video file
-  const isVideo = contentType.startsWith("video/")
-
-  // Use transcoding if enabled and quality is requested
-  if (
-    isVideo &&
-    settings.transcoding.enabled &&
-    needsTranscoding(filePath, quality)
-  ) {
-    try {
-      const { stream, headers, status } = await streamTranscoded(
-        filePath,
-        quality,
-        range || undefined,
-      )
-
-      return new Response(stream as unknown as ReadableStream, {
-        status,
-        headers,
-      })
-    } catch (error: any) {
-      console.error("Transcoding error:", error)
-      // Fall back to original file if transcoding fails
-    }
-  }
 
   // Stream original file
   if (range) {

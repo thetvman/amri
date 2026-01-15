@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    network_mode: 'host'
+    volumes:
+      # Jellyfin config and cache
+      - /mnt/raid/media/jellyfin/config:/config
+      - /mnt/raid/media/jellyfin/cache:/cache
+      # Media libraries
+      - /mnt/raid/media/library/movies:/media/movies:ro
+      - /mnt/raid/media/library/tv:/media/tv:ro
+    environment:
+      - JELLYFIN_PublishedServerUrl=http://YOUR_SERVER_IP:8096
+      - TZ=America/New_York  # Change to your timezone
+    devices:
+      # For hardware acceleration (optional - uncomment if you have a GPU)
+      # - /dev/dri:/dev/dri
+    ports:
+      - "8096:8096"
+      - "8920:8920"  # HTTPS (optional)
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
