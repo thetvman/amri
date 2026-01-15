@@ -28,7 +28,7 @@ const menuItems: MenuItem[] = [
     icon: <Film className="h-5 w-5" />,
     label: "Movies",
     value: "movies",
-    href: "/movies",
+    href: "/library/movies",
     gradient: "radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(37,99,235,0.06) 50%, rgba(29,78,216,0) 100%)",
     iconColor: "text-blue-500",
   },
@@ -36,7 +36,7 @@ const menuItems: MenuItem[] = [
     icon: <Tv className="h-5 w-5" />,
     label: "TV Shows",
     value: "tv",
-    href: "/tv",
+    href: "/library/tv",
     gradient: "radial-gradient(circle, rgba(168,85,247,0.15) 0%, rgba(147,51,234,0.06) 50%, rgba(126,34,206,0) 100%)",
     iconColor: "text-purple-500",
   },
@@ -137,8 +137,9 @@ export function MenuBar({ isAdmin = false }: MenuBarProps) {
           const isActive =
             pathname === item.href ||
             (item.value === "home" && pathname === "/") ||
-            (item.value === "movies" && pathname.startsWith("/movies")) ||
-            (item.value === "tv" && pathname.startsWith("/tv"))
+            (item.value === "movies" &&
+              (pathname.startsWith("/movies") || pathname.startsWith("/library/movies"))) ||
+            (item.value === "tv" && (pathname.startsWith("/tv") || pathname.startsWith("/library/tv")))
           return (
             <motion.li key={item.label} className="relative">
               <Link href={item.href}>

@@ -1,19 +1,24 @@
 import { HomeScreen } from "@/components/home-screen"
-import { getTrendingTV } from "@/lib/tmdb"
+import { getLibrary } from "@/lib/library"
 
 export default async function TvPage() {
-  let items = []
-  try {
-    items = await getTrendingTV()
-  } catch (error) {
-    console.error("Failed to load trending TV shows:", error)
-  }
+  const library = await getLibrary()
+  const items = library.tv.map((show) => ({
+    id: show.id,
+    title: show.title,
+    year: show.year,
+    rating: show.rating || "N/A",
+    genre: show.quality || "HD",
+    poster: show.poster || "/placeholder.svg",
+    type: "tv" as const,
+    source: "library" as const,
+  }))
 
   return (
     <HomeScreen
       items={items}
-      title="Trending TV Shows"
-      subtitle="Binge-worthy series topping the charts"
+      title="TV Library"
+      subtitle="Your synced Sonarr collection"
       showCategoryFilter={false}
       defaultCategory="tv"
     />

@@ -1,19 +1,24 @@
 import { HomeScreen } from "@/components/home-screen"
-import { getTrendingMovies } from "@/lib/tmdb"
+import { getLibrary } from "@/lib/library"
 
 export default async function MoviesPage() {
-  let items = []
-  try {
-    items = await getTrendingMovies()
-  } catch (error) {
-    console.error("Failed to load trending movies:", error)
-  }
+  const library = await getLibrary()
+  const items = library.movies.map((movie) => ({
+    id: movie.id,
+    title: movie.title,
+    year: movie.year,
+    rating: movie.rating || "N/A",
+    genre: movie.quality || "HD",
+    poster: movie.poster || "/placeholder.svg",
+    type: "movie" as const,
+    source: "library" as const,
+  }))
 
   return (
     <HomeScreen
       items={items}
-      title="Trending Movies"
-      subtitle="The most talked-about movies right now"
+      title="Movies Library"
+      subtitle="Your synced Radarr collection"
       showCategoryFilter={false}
       defaultCategory="movies"
     />

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { motion } from "framer-motion"
 import { Film, Tv, RefreshCw, FolderPlus } from "lucide-react"
+import Link from "next/link"
 
 interface LibraryItem {
   id: string
@@ -126,7 +127,11 @@ export default function AdminLibrary() {
                         <TableCell>{item.size}</TableCell>
                         <TableCell>{getStatusBadge(item.status)}</TableCell>
                         <TableCell className="text-right">
-                          <Button size="sm" variant="outline">View</Button>
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/watch/${item.id}?type=${item.type}&source=library`}>
+                              {item.status === "available" ? "Play" : "View"}
+                            </Link>
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
